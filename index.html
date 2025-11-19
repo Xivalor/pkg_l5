@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Лаб. работа 5 — Отсечение (вариант 4)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+  </header>
+
+  <main>
+    <section class="left">
+      <div class="controls">
+        <h2>Входные данные</h2>
+        <textarea id="inputText" rows="10" placeholder="Вставьте входной файл здесь..."></textarea>
+        <div class="buttons">
+          <button id="loadExample">Загрузить пример</button>
+          <button id="parseBtn">Применить входные данные</button>
+        </div>
+
+        <h3>Режим</h3>
+        <label><input type="radio" name="mode" value="rect" checked> Отсечение прямоугольным окном (Cohen–Sutherland)</label><br>
+        <label><input type="radio" name="mode" value="convex"> Отсечение выпуклым многоугольником (Cyrus–Beck)</label>
+
+        <h3>Построение многоугольника</h3>
+        <button id="clearPoly">Очистить многоугольник</button>
+
+        <h3>Действия</h3>
+        <button id="clipBtn">Выполнить отсечение</button>
+        <button id="resetView">Сбросить вид</button>
+
+        <h3>Легенда</h3>
+        <ul>
+          <li><span class="legend rectWindow"></span> Отсекающее прямоугольное окно</li>
+          <li><span class="legend origSeg"></span> Исходные отрезки</li>
+          <li><span class="legend clippedSeg"></span> Видимые части после отсечения</li>
+          <li><span class="legend poly"></span> Многоугольник клиппинга</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="right">
+      <canvas id="canvas" width="900" height="700"></canvas>
+      <div class="status" id="status">Статус: ожидает данных</div>
+    </section>
+  </main>
+
+  <footer>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
