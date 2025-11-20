@@ -1,9 +1,3 @@
-// script.js
-// Важные комментарии и инструкции можно найти в этом файле.
-// Реализованы: парсинг входа, отрисовка системы координат, алгоритмы:
-//  - Cohen-Sutherland (прямоугольное окно)
-//  - Cyrus-Beck (отрезок vs выпуклый многоугольник)
-
 (() => {
   // DOM
   const canvas = document.getElementById('canvas');
@@ -19,13 +13,12 @@
   // state
   let segments = []; // [{x1,y1,x2,y2}, ...]
   let rectWindow = null; // {xmin,ymin,xmax,ymax}
-  let view = { // world coordinate bounding box (auto)
+  let view = {
     xmin: -10, ymin: -10, xmax: 10, ymax: 10
   };
-  let polygon = []; // array of points {x,y} in world coords (user-drawn convex polygon)
+  let polygon = []; // array of points {x,y}
   let mode = 'rect'; // 'rect' or 'convex'
 
-  // visual settings
   const colors = {
     axes: '#999',
     grid: '#e9eef8',
@@ -37,16 +30,14 @@
   };
 
   function windowToCanvasPixels(clientX, clientY) {
-    const rect = canvas.getBoundingClientRect(); // CSS-проекция
+    const rect = canvas.getBoundingClientRect();
     const xCss = clientX - rect.left;
     const yCss = clientY - rect.top;
-    // масштаб между CSS-пикселями и реальными пикселями буфера
     const scaleX = canvas.width  / rect.width;
     const scaleY = canvas.height / rect.height;
     return { x: xCss * scaleX, y: yCss * scaleY };
   }
 
-  // coordinate transform: world -> canvas
   function worldToCanvas(x, y) {
     const cw = canvas.width, ch = canvas.height;
     const sx = cw / (view.xmax - view.xmin);
@@ -67,11 +58,9 @@
     };
   }
 
-  // draw coordinate axes + grid
   function drawAxes() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // grid lines every integer unit (if scale allows)
     const dx = 1, dy = 1;
     const stepX = dx, stepY = dy;
     ctx.lineWidth = 1;
@@ -127,11 +116,9 @@
     }
   }
 
-  // Draw everything (called after parsing or user actions)
   function renderAll(highlightClipped = []) {
     drawAxes();
 
-    // draw clipping rectangle if exists
     if (rectWindow) {
       const { xmin, ymin, xmax, ymax } = rectWindow;
       const p1 = worldToCanvas(xmin, ymin);
@@ -145,14 +132,12 @@
       ctx.strokeRect(p1.x, p2.y, w, h);
     }
 
-    // draw polygon (if any)
     if (polygon.length > 0) {
       ctx.beginPath();
       polygon.forEach((pt, idx) => {
         const p = worldToCanvas(pt.x, pt.y);
         if (idx === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
       });
-      // if closed
       if (polygon.length >= 3) {
         ctx.closePath();
         ctx.fillStyle = 'rgba(160,80,200,0.06)';
@@ -161,7 +146,6 @@
       ctx.strokeStyle = colors.polyStroke;
       ctx.lineWidth = 2;
       ctx.stroke();
-      // draw vertices
       polygon.forEach(pt => {
         const p = worldToCanvas(pt.x, pt.y);
         ctx.beginPath();
@@ -171,7 +155,6 @@
       });
     }
 
-    // draw original segments
     ctx.lineWidth = 2;
     ctx.strokeStyle = colors.origSeg;
     segments.forEach(s => {
@@ -183,7 +166,6 @@
       ctx.stroke();
     });
 
-    // draw clipped segments if any provided in highlightClipped
     ctx.lineWidth = 3;
     ctx.strokeStyle = colors.clippedSeg;
     highlightClipped.forEach(s => {
@@ -196,15 +178,7 @@
     });
   }
 
-  // -----------------------
-  // Parsing input
-  // -----------------------
   function parseInput(text) {
-    // Expected format:
-    // n
-    // x1 y1 x2 y2
-    // ...
-    // xmin ymin xmax ymax
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l !== '');
     if (lines.length < 2) throw new Error('Недостаточно строк во входном файле.');
     let idx = 0;
@@ -226,10 +200,6 @@
     return { segs, rectWindow: { xmin, ymin, xmax, ymax } };
   }
 
-  // -----------------------
-  // Cohen–Sutherland (прямоугольное окно)
-  // -----------------------
-  // region codes
   const INSIDE = 0; // 0000
   const LEFT = 1;   // 0001
   const RIGHT = 2;  // 0010
@@ -245,7 +215,6 @@
     return code;
   }
 
-  // returns clipped segment or null
   function cohenSutherlandClip(s, rect) {
     let x0 = s.x1, y0 = s.y1, x1 = s.x2, y1 = s.y2;
     let outcode0 = computeOutCode(x0, y0, rect);
@@ -292,15 +261,7 @@
     return null;
   }
 
-  // -----------------------
-  // Cyrus–Beck (отрезок vs выпуклый многоугольник)
-  // Параметрическое представление P(t) = P0 + t*(P1-P0), t in [0,1]
-  // Для каждой грани: n_i dot (P(t) - PEi) >= 0 (внешняя/внутренняя ориентация)
-  // -----------------------
-  // Helper: edge normal (outward) for convex polygon
   function edgeNormal(p1, p2) {
-    // direction edge = p2 - p1
-    // outward normal depends on polygon orientation; we'll compute normals pointing outward by using polygon area sign
     const dx = p2.x - p1.x, dy = p2.y - p1.y;
     // unnormalized normal (perp): (dy, -dx) or (-dy, dx)
     return { nx: dy, ny: -dx };
@@ -371,11 +332,6 @@
     };
 }
 
-
-
-  // -----------------------
-  // UI handlers and interactions
-  // -----------------------
   loadExampleBtn.addEventListener('click', () => {
     const example = [
       '6',
@@ -396,9 +352,8 @@
       const parsed = parseInput(inputText.value);
       segments = parsed.segs;
       rectWindow = parsed.rectWindow;
-      // auto set view to include everything plus margin
       autoFitView();
-      polygon = []; // сбросим
+      polygon = [];
       renderAll([]);
       status.textContent = `Данные распарсены: ${segments.length} отрезков. Окно: [${rectWindow.xmin},${rectWindow.ymin}] — [${rectWindow.xmax},${rectWindow.ymax}]`;
     } catch (e) {
@@ -406,7 +361,6 @@
     }
   });
 
-  // change mode radio
   document.querySelectorAll('input[name="mode"]').forEach(r => {
     r.addEventListener('change', (ev) => {
       mode = ev.target.value;
@@ -415,7 +369,6 @@
     });
   });
 
-  // clip button
   clipBtn.addEventListener('click', () => {
     if (mode === 'rect') {
       if (!rectWindow) { status.textContent = 'Нет заданного прямоугольного окна.'; return; }
@@ -429,7 +382,6 @@
     } else {
       // convex polygon mode
       if (polygon.length < 3) { status.textContent = 'Нарисуйте (или задайте) выпуклый многоугольник клиппинга (>=3 точек).'; return; }
-      // NOTE: algorithm требует выпуклости; не проверяем строго — пользователь должен обеспечить.
       const clipped = [];
       for (let s of segments) {
         const cs = cyrusBeckClip(s, polygon);
@@ -452,7 +404,6 @@
     status.textContent = 'Многоугольник очищен.';
   });
 
-  // auto fit view to extents of segments/window/polygon
   function autoFitView() {
     let xs = [], ys = [];
     segments.forEach(s => { xs.push(s.x1, s.x2); ys.push(s.y1, s.y2); });
@@ -466,21 +417,16 @@
     view = { xmin: minx - padX, xmax: maxx + padX, ymin: miny - padY, ymax: maxy + padY };
   }
 
-  // -----------------------
-  // canvas interactions for drawing polygon
-  // -----------------------
-
   canvas.addEventListener('click', (ev) => {
     if (mode !== 'convex') return;
-    const cp = windowToCanvasPixels(ev.clientX, ev.clientY); // canvas-пиксели
-    const wp = canvasToWorld(cp.x, cp.y);                    // теперь корректно
+    const cp = windowToCanvasPixels(ev.clientX, ev.clientY);
+    const wp = canvasToWorld(cp.x, cp.y);               
     polygon.push({ x: wp.x, y: wp.y });
-    autoFitView(); // по желанию — если хочешь авто-подгонку
+    autoFitView();
     renderAll([]);
     status.textContent = `Добавлена вершина полигона (${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}). Всего вершин: ${polygon.length}.`;
   });
 
-  // allow dragging to pan (simple)
   let isPanning = false;
   let panStart = null;
   canvas.addEventListener('mousedown', (ev) => {
@@ -519,7 +465,6 @@
     }
   });
 
-  // wheel to zoom
   canvas.addEventListener('wheel', (ev) => {
     const factor = Math.exp(ev.deltaY * -0.0012);
     const cp = windowToCanvasPixels(ev.clientX, ev.clientY);
@@ -535,15 +480,12 @@
     ev.preventDefault();
   });
 
-  // initial rendering
   autoFitView();
   renderAll([]);
 
-  // expose for debugging (optional)
   window._lab5 = {
     segments, rectWindow, polygon, renderAll, cohenSutherlandClip, cyrusBeckClip
   };
 
-  // initial status
   status.textContent = 'Готово. Загрузите входные данные или используйте пример.';
 })();
